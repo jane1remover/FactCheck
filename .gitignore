@@ -1,0 +1,12 @@
+# Ignore machine learning models and large files
+backend/factcheck-model/
+*.safetensors
+*.bin
+
+# Ignore python caches
+__pycache__/
+*.pyc
+
+# Ignore environment/logs
+.env
+logs/

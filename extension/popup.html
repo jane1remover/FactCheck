@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FactCheck AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0d0d1a;
+      --surface: #13132b;
+      --border: #2a2a5a;
+      --accent: #5b5bff;
+      --accent-glow: rgba(91,91,255,0.25);
+      --text: #e8e8ff;
+      --muted: #8888bb;
+      --true: #22c55e;
+      --false: #ef4444;
+      --mixed: #f59e0b;
+      --uncertain: #8888bb;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      width: 380px;
+      min-height: 480px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      overflow-x: hidden;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 16px 18px 14px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(135deg, #0d0d1a 0%, #13132b 100%);
+    }
+    .logo { font-family: 'Space Mono', monospace; font-size: 15px; font-weight: 700; color: var(--accent); }
+    .logo span { color: var(--text); }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; margin-left: auto; box-shadow: 0 0 6px #22c55e; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+    /* ── Input area ── */
+    .input-section { padding: 14px 18px; border-bottom: 1px solid var(--border); }
+
+    textarea {
+      width: 100%;
+      min-height: 80px;
+      max-height: 180px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      font-size: 13px;
+      padding: 10px 12px;
+      resize: vertical;
+      outline: none;
+      overflow-y: auto;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    textarea::placeholder { color: var(--muted); }
+
+    .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+
+    button {
+      flex: 1;
+      padding: 9px 0;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all .2s;
+      letter-spacing: .5px;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #7070ff; box-shadow: 0 0 14px var(--accent-glow); }
+    .btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--accent); }
+
+    /* ── OCR section ── */
+    .ocr-section {
+      padding: 10px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .ocr-label { color: var(--muted); font-size: 11px; flex: 1; }
+    .ocr-upload { display: none; }
+    .ocr-btn {
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      font-family: 'Space Mono', monospace;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: all .2s;
+    }
+    .ocr-btn:hover { border-color: var(--accent); color: var(--text); }
+
+    /* ── Result card ── */
+    .result-section { padding: 14px 18px; }
+
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      display: none;
+      animation: slideIn .3s ease;
+    }
+    .result-card.visible { display: block; }
+    @keyframes slideIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+    .verdict-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+
+    .verdict-badge {
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 14px;
+      border-radius: 20px;
+      letter-spacing: .5px;
+    }
+    .verdict-True    { background: rgba(34,197,94,.15);  color: var(--true);      border: 1px solid rgba(34,197,94,.4); }
+    .verdict-False   { background: rgba(239,68,68,.15);  color: var(--false);     border: 1px solid rgba(239,68,68,.4); }
+    .verdict-Mixed   { background: rgba(245,158,11,.15); color: var(--mixed);     border: 1px solid rgba(245,158,11,.4); }
+    .verdict-Uncertain{ background: rgba(136,136,187,.15);color: var(--uncertain); border: 1px solid rgba(136,136,187,.4); }
+
+    .source-tag {
+      margin-left: auto;
+      font-size: 10px;
+      color: var(--muted);
+      background: rgba(91,91,255,.1);
+      border: 1px solid rgba(91,91,255,.2);
+      padding: 3px 8px;
+      border-radius: 20px;
+    }
+
+    .claim-text {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 10px;
+      line-height: 1.5;
+      border-left: 2px solid var(--accent);
+      padding-left: 10px;
+      font-style: italic;
+      word-break: break-word;
+    }
+
+    .meta-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .meta-label { color: var(--muted); font-size: 11px; min-width: 70px; }
+    .meta-value { color: var(--text); font-size: 12px; font-weight: 500; }
+
+    /* confidence bar */
+    .confidence-bar-wrap { flex: 1; height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .confidence-bar { height: 100%; border-radius: 3px; background: var(--accent); transition: width .6s ease; }
+
+    .result-link {
+      display: inline-block;
+      margin-top: 10px;
+      font-size: 11px;
+      color: var(--accent);
+      text-decoration: none;
+      font-family: 'Space Mono', monospace;
+    }
+    .result-link:hover { text-decoration: underline; }
+
+    /* ── Article multi-result ── */
+    .article-result-card { display: none; }
+    .article-result-card.visible { display: block; }
+    .article-header {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      margin-bottom: 10px;
+      padding: 6px 10px;
+      background: rgba(91,91,255,0.07);
+      border-radius: 6px;
+      border: 1px solid rgba(91,91,255,0.18);
+    }
+    .mini-claim-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 12px;
+      margin-bottom: 8px;
+      animation: slideIn .3s ease;
+    }
+    .mini-verdict-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 7px;
+    }
+    .mini-claim-text {
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.5;
+      border-left: 2px solid var(--accent);
+      padding-left: 8px;
+      font-style: italic;
+      word-break: break-word;
+      margin-bottom: 5px;
+    }
+    .mini-publisher {
+      font-size: 11px;
+      color: var(--text);
+      font-weight: 500;
+    }
+
+    /* ── Error ── */
+    .error-card {
+      background: rgba(239,68,68,.08);
+      border: 1px solid rgba(239,68,68,.3);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 12px;
+      color: #f87171;
+      display: none;
+    }
+    .error-card.visible { display: block; }
+
+    /* ── Loading ── */
+    .loading {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 24px 0;
+    }
+    .loading.visible { display: flex; }
+    .spinner {
+      width: 28px; height: 28px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { color: var(--muted); font-size: 11px; font-family: 'Space Mono', monospace; }
+
+    /* ── Footer ── */
+    .footer {
+      padding: 10px 18px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .footer-note { font-size: 10px; color: var(--muted); }
+    .backend-status { font-size: 10px; font-family: 'Space Mono', monospace; }
+    .backend-ok  { color: var(--true); }
+    .backend-err { color: var(--false); }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="logo">Fact<span>Check</span> AI</div>
+  <div style="font-size:10px;color:var(--muted);font-family:'Space Mono',monospace">v1.0</div>
+  <div class="status-dot" id="statusDot" title="Backend status"></div>
+</div>
+
+<!-- Input -->
+<div class="input-section">
+  <textarea id="claimInput" placeholder="Paste a claim, headline, or article excerpt to fact-check…"></textarea>
+  <div class="btn-row">
+    <button class="btn-primary" id="checkBtn">🔍 CHECK CLAIM</button>
+    <button class="btn-secondary" id="clearBtn">✕ CLEAR</button>
+  </div>
+</div>
+
+<!-- OCR Upload -->
+<div class="ocr-section">
+  <div class="ocr-label">📸 Check a screenshot instead</div>
+  <label class="ocr-btn" for="ocrInput">Upload Image</label>
+  <input type="file" id="ocrInput" class="ocr-upload" accept="image/*" />
+</div>
+
+<!-- Results -->
+<div class="result-section">
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">Checking Google FactCheck…</div>
+  </div>
+
+  <div class="error-card" id="errorCard"></div>
+
+  <div class="result-card" id="resultCard">
+    <div class="verdict-row">
+      <div class="verdict-badge" id="verdictBadge">—</div>
+      <div class="source-tag" id="sourceTag">—</div>
+    </div>
+
+    <div class="claim-text" id="claimText"></div>
+
+    <div class="meta-row">
+      <div class="meta-label">Publisher</div>
+      <div class="meta-value" id="publisherVal">—</div>
+    </div>
+
+    <div class="meta-row" id="confidenceRow" style="display:none">
+      <div class="meta-label">Confidence</div>
+      <div class="confidence-bar-wrap">
+        <div class="confidence-bar" id="confidenceBar" style="width:0%"></div>
+      </div>
+      <div class="meta-value" id="confidenceVal" style="min-width:36px;text-align:right">—</div>
+    </div>
+
+    <!-- BUG 4 FIX: No href fallback — JS sets href only when a real URL is available -->
+    <a class="result-link" id="resultLink" target="_blank" style="display:none">
+      → View full fact-check ↗
+    </a>
+  </div>
+
+  <!-- Article mode: stacked claim cards -->
+  <div class="article-result-card" id="articleResultCard"></div>
+</div>
+
+<!-- Footer -->
+<div class="footer">
+  <div class="footer-note">Hybrid: Google API + RoBERTa ML</div>
+  <div class="backend-status" id="backendStatus">checking backend…</div>
+</div>
+
+<!-- Tesseract OCR (loaded from CDN) -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>
